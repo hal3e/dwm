@@ -11,19 +11,18 @@ static const int horizpadbar          = -5;  /* Horizontal padding for statusbar
 static const int vertpadbar           = 8;   /* Vertical padding for statusbar */
 
 static const char *fonts[]            = {"Hack:size=11:antialias=true:autohint=true",
-                                         "Font Awesome 5 Free Solid:size=9:antialias=true:autohint=true",
-                                         "Font Awesome 5 Brands:size=9:antialias=true:autohint=true"};
+                                         "Font Awesome 6 Free Solid:size=9:antialias=true:autohint=true",
+                                         "Font Awesome 6 Brands:size=9:antialias=true:autohint=true"};
 
-static const char nord0[]  = "#2E3445";
+static const char nord0[]  = "#24273A";
 static const char nord2[]  = "#75829c";
-static const char nord5[]  = "#D8DEE9";
-static const char nord10[] = "#4d8ccb";
-static const char nord7[]  = "#609f9e";
-static const char nord11[] = "#BF616A";
-static const char nord12[] = "#D08770";
-static const char nord13[] = "#EBCB8B";
-static const char nord14[] = "#A3BE8C";
-static const char nord15[] = "#B48EAD";
+static const char nord5[]  = "#EAEEFA";
+static const char nord10[] = "#8AADF4";
+static const char nord7[]  = "#8BD5CA";
+static const char nord11[] = "#ED8796";
+static const char nord13[] = "#EED49F";
+static const char nord14[] = "#A6DA95";
+static const char nord15[] = "#F5BDE6";
 
 static const unsigned int baralpha    = 0xff; /* 0xff is no transparency */
 static const unsigned int borderalpha = OPAQUE;
@@ -32,7 +31,7 @@ static const char *colors[][3]        = {
 	/*                    fg      bg      border */
 	[SchemeNord10]    = { nord10, nord0,  nord2},
 	[SchemeNord7]     = { nord7,  nord0,  nord0 },
-	[SchemeNord12]    = { nord12, nord0,  nord0 },
+	[SchemeNord12]    = { nord11, nord0,  nord0 },
 	[SchemeNord13]    = { nord13, nord0,  nord0 },
 	[SchemeNord15]    = { nord15, nord0,  nord0 },
 	[SchemeNord14]    = { nord14, nord0,  nord0 },
@@ -55,14 +54,10 @@ static const unsigned int alphas[][3] = {
 };
 
 /* static const char *tags[] =   { "", "", "", "", "", "", "", "", "" }; */
-static const char *tags[] =   { "", "", "", "", "",""};
+static const char *tags[] =   { "", "", "", "", ""};
 
 static const Rule rules[] = {
 	/* Class       Itstance    Title  Tags Mask  Isfloating  Monitor */
-	{ "Firefox",   NULL,       NULL,  1 << 2,    0,          -1 },
-	{ "Chromium",  NULL,       NULL,  1 << 2,    0,          -1 },
-	{ "Inkscape",  NULL,       NULL,  1 << 3,    0,          -1 },
-	{ "Nautilus",  NULL,       NULL,  0,         1,          -1 },
 	{ NULL,        "float-m",  NULL,  0,         1,          -1 },
 };
 
@@ -85,7 +80,6 @@ static const Layout layouts[] = {
 #define MODKEY  Mod1Mask
 #define MODKEY2 Mod5Mask
 #define CMD(cmd) { .v = (const char*[]){ "/bin/sh", "-c", cmd, NULL } }
-static const char *lunchcmd[]    = { "/home/hal3e/bin/sk-lunch.sh", NULL };
 #define TAGKEYS(KEY,TAG) \
 	{ MODKEY,                       KEY,      view,           {.ui = 1 << TAG} }, \
 	{ MODKEY|ControlMask|ShiftMask, KEY,      toggleview,     {.ui = 1 << TAG} }, \
@@ -130,34 +124,37 @@ static Key keys[] = {
 
   /* Launch progarms */
 	{ MODKEY,               XK_1,      spawn,          CMD("~/bin/change-layout.sh workman") },
-	{ MODKEY,               XK_2,      spawn,          CMD("~/bin/change-layout.sh us") },
-	{ MODKEY2,              XK_s,      spawn,          { .v = lunchcmd } },
-	{ MODKEY2,              XK_b,      spawn,          CMD("st -t 'fish /home/hal3e'") },
+    { MODKEY,               XK_2,      spawn,          CMD("~/bin/change-layout.sh us") },
+	{ MODKEY,               XK_r,      spawn,          CMD("~/bin/connect-bt-earp.sh") },
+	{ MODKEY2,              XK_e,      spawn,          CMD("~/bin/connect-bt-keyb.sh") },
+	{ MODKEY2,              XK_s,      spawn,          CMD("~/bin/sk-lunch.sh") },
+	{ MODKEY2,              XK_b,      spawn,          CMD("st -T '~'") },
 	{ MODKEY2,              XK_t,      spawn,          CMD("firefox") },
 	{ MODKEY2,              XK_g,      spawn,          CMD("firefox --private-window") },
-	{ MODKEY2,              XK_c,      spawn,          CMD("~/bin/latex-eq/latex-2-svg.sh") },
-	{ MODKEY2,              XK_w,      spawn,          CMD("st -n float-m -g 150x35 -e ranger") },
-  { MODKEY2,              XK_m,      spawn,          CMD("~/bin/calcurse-dwm.sh") },
+    { MODKEY2,              XK_m,      spawn,          CMD("~/bin/calcurse-dwm.sh") },
 	{ MODKEY2,              XK_x,      spawn,          CMD("~/bin/pulse-term.sh") },
-	{ MODKEY2,              XK_r,      spawn,          CMD("st -t 'fish /home/hal3e' -n float-m -g 80x16 -e fish") },
-	{ MODKEY2,              XK_a,      spawn,          CMD("st -n float-m -g 100x16 -e /home/hal3e/bin/install.sh") },
-	{ MODKEY2,              XK_d,      spawn,          CMD("st -n float-m -g 64x16 -e /home/hal3e/bin/wifi-connect.sh") },
-	{ MODKEY2,              XK_q,      spawn,          CMD("st -n float-m -g 32x12 -e /home/hal3e/bin/pass-2-clip.sh") },
-	{ MODKEY2,              XK_h,      spawn,          CMD("st -n float-m -g 28x5 -e /home/hal3e/bin/stopwatch.sh") },
-  { 0,                    XK_Print,  spawn,          CMD("sleep 0.2; scrot -s") },
-
+	{ MODKEY2,              XK_r,      spawn,          CMD("~/bin/float.sh ~ 80x16 fish") },
+	{ MODKEY2,              XK_a,      spawn,          CMD("~/bin/float.sh 'install packages' 128x16 ~/bin/install.sh") },
+	{ MODKEY2,              XK_z,      spawn,          CMD("~/bin/float.sh 'remove packages' 128x16 ~/bin/remove.sh") },
+	{ MODKEY2,              XK_q,      spawn,          CMD("~/bin/pass-2-clip.sh") },
+	{ MODKEY2,              XK_h,      spawn,          CMD("~/bin/float.sh stopwatch 28x5 ~/bin/stopwatch.sh") },
+	{ MODKEY2,              XK_w,      spawn,          CMD("~/bin/float.sh ranger 150x35 ranger") },
+    { 0,                    XK_Print,  spawn,          CMD("sleep 0.2; scrot -s") },
 	{ MODKEY2|ControlMask,  XK_q,      spawn,          CMD("~/bin/poweroff.sh") },
 	{ MODKEY2|ControlMask,  XK_z,      spawn,          CMD("~/bin/hibernate.sh") },
-	{ MODKEY2|ControlMask,  XK_a,      spawn,          CMD("st -n float-m -g 32x12 -e /home/hal3e/bin/mount-script.sh") },
-  { MODKEY2|ControlMask,  XK_h,      spawn,          CMD("st -n float-m -g 32x12 -e /home/hal3e/bin/umount-script.sh") },
-  { MODKEY2|ShiftMask,    XK_q,	     quit,           {0} },
-  { MODKEY2|ShiftMask,    XK_w,      quit,           {1} },
 
-  { 0,     XF86XK_AudioLowerVolume,  spawn,          CMD("pactl set-sink-volume 0 -5%") },
-  { 0,     XF86XK_AudioRaiseVolume,  spawn,          CMD("pactl set-sink-volume 0 +5%") },
+	{ MODKEY2,              XK_d,      spawn,          CMD("~/bin/wifi-connect.sh") },
+	{ MODKEY2|ControlMask,  XK_a,      spawn,          CMD("~/bin/mount-script.sh") },
+    { MODKEY2|ControlMask,  XK_h,      spawn,          CMD("~/bin/umount-script.sh") },
+	{ MODKEY2|ControlMask,  XK_v,      spawn,          CMD("~/bin/vpn-select.sh") },
 
-  { 0,     XF86XK_MonBrightnessDown, spawn,          CMD("xbacklight -dec 10") },
-  { 0,     XF86XK_MonBrightnessUp,   spawn,          CMD("xbacklight -inc 10") },
+    { 0,     XF86XK_AudioLowerVolume,  spawn,          CMD("pactl set-sink-volume 0 -5%") },
+    { 0,     XF86XK_AudioRaiseVolume,  spawn,          CMD("pactl set-sink-volume 0 +5%") },
+    { 0,     XF86XK_MonBrightnessDown, spawn,          CMD("xbacklight -dec 10") },
+    { 0,     XF86XK_MonBrightnessUp,   spawn,          CMD("xbacklight -inc 10") },
+
+    { MODKEY2|ShiftMask,    XK_q,	   quit,           {0} },
+    { MODKEY2|ShiftMask,    XK_w,      quit,           {1} },
 
   /* Tag keymaps */
 	TAGKEYS(                XK_f,             0)
@@ -165,7 +162,6 @@ static Key keys[] = {
 	TAGKEYS(                XK_p,             2)
 	TAGKEYS(                XK_semicolon,     3)
 	TAGKEYS(                XK_bracketleft,   4)
-	TAGKEYS(                XK_bracketright,  5)
 };
 
 /* Click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */

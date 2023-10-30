@@ -61,8 +61,8 @@
 #define OPAQUE                  0xff
 /* enums */
 enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
-enum {SchemeNord10, SchemeNord7, SchemeNord12, SchemeNord13, /* color schemes */
-      SchemeNord15, SchemeNord14, SchemeNord2, SchemeNorm, SchemeUrgent};
+enum {SchemeNord12, SchemeNord7, SchemeNord10, SchemeNord13, /* color schemes */
+      SchemeNord14, SchemeNord15, SchemeNord2, SchemeNorm, SchemeUrgent};
 enum { NetSupported, NetWMName, NetWMState, NetWMCheck,
        NetWMFullscreen, NetActiveWindow, NetWMWindowType,
        NetWMWindowTypeDialog, NetClientList, NetLast }; /* EWMH atoms */
@@ -799,7 +799,7 @@ drawbar(Monitor *m)
 
 	/* draw status first so it can be overdrawn by tags later */
 	/* if (m == selmon) { /1* status is only drawn on selected monitor *1/ */
-	sw = TEXTW(stext) - 260;
+	sw = TEXTW(stext) - 275;
 
   strcpy(stextcopy, stext);
   sub = strtok(stextcopy,"|");
