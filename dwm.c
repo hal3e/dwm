@@ -61,7 +61,7 @@
 
 /* enums */
 enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
-enum { SchemeNorm, SchemeSel }; /* color schemes */
+enum { SchemeNorm, SchemeSel, SchemeWarn, SchemeUrgent }; /* color schemes */
 enum { NetSupported, NetWMName, NetWMState, NetWMCheck,
        NetWMFullscreen, NetActiveWindow, NetWMWindowType,
        NetWMWindowTypeDialog, NetClientList, NetLast }; /* EWMH atoms */
@@ -83,6 +83,11 @@ typedef struct {
 	void (*func)(const Arg *arg);
 	const Arg arg;
 } Button;
+
+typedef struct {
+	char marker;
+	unsigned int scheme;
+} StatusStyle;
 
 typedef struct Monitor Monitor;
 typedef struct Client Client;
@@ -169,6 +174,7 @@ static void detachstack(Client *c);
 static Monitor *dirtomon(int dir);
 static void drawbar(Monitor *m);
 static void drawbars(void);
+static void drawstatusbar(Monitor *m, int width);
 static void enternotify(XEvent *e);
 static void expose(XEvent *e);
 static void focus(Client *c);
@@ -216,6 +222,9 @@ static void showhide(Client *c);
 static void sighup(int unused);
 static void sigterm(int unused);
 static void spawn(const Arg *arg);
+static int statusnext(const char **cursor, char *text, size_t size, unsigned int *schemeid);
+static int statusstyle(char marker, unsigned int *schemeid);
+static int statuswidth(const char *text);
 static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
 static void tile(Monitor *m);
@@ -481,7 +490,7 @@ buttonpress(XEvent *e)
 			arg.ui = 1 << i;
 		} else if (ev->x < x + TEXTW(selmon->ltsymbol))
 			click = ClkLtSymbol;
-		else if (ev->x > selmon->ww - (int)TEXTW(stext))
+		else if (ev->x > selmon->ww - statuswidth(stext))
 			click = ClkStatusText;
 		else
 			click = ClkWinTitle;
@@ -753,6 +762,85 @@ dirtomon(int dir)
 	return m;
 }
 
+int
+statusstyle(char marker, unsigned int *schemeid)
+{
+	unsigned int i;
+
+	for (i = 0; i < LENGTH(statusstyles); i++) {
+		if (statusstyles[i].marker == marker && statusstyles[i].scheme < LENGTH(colors)) {
+			*schemeid = statusstyles[i].scheme;
+			return 1;
+		}
+	}
+	return 0;
+}
+
+int
+statusnext(const char **cursor, char *text, size_t size, unsigned int *schemeid)
+{
+	const char *p = *cursor;
+	size_t len = 0;
+	unsigned int nextscheme;
+
+	while (*p) {
+		if (*p == '^') {
+			if (p[1] == '^') {
+				if (len + 1 < size)
+					text[len++] = '^';
+				p += 2;
+				continue;
+			}
+			if (p[1] && statusstyle(p[1], &nextscheme)) {
+				if (len)
+					break;
+				*schemeid = nextscheme;
+				p += 2;
+				continue;
+			}
+		}
+		if (len + 1 < size)
+			text[len++] = *p;
+		p++;
+	}
+	text[len] = '\0';
+	*cursor = p;
+	return len != 0;
+}
+
+int
+statuswidth(const char *text)
+{
+	char segment[sizeof stext];
+	const char *cursor = text;
+	int width = lrpad;
+	unsigned int schemeid = SchemeNorm;
+
+	while (statusnext(&cursor, segment, sizeof segment, &schemeid))
+		width += drw_fontset_getwidth(drw, segment);
+	return width;
+}
+
+void
+drawstatusbar(Monitor *m, int width)
+{
+	char segment[sizeof stext];
+	const char *cursor = stext;
+	int segmentwidth;
+	int x = m->ww - width;
+	unsigned int schemeid = SchemeNorm;
+
+	drw_setscheme(drw, scheme[SchemeNorm]);
+	drw_rect(drw, x, 0, width, bh, 1, 1);
+	x += lrpad / 2;
+	while (statusnext(&cursor, segment, sizeof segment, &schemeid)) {
+		segmentwidth = drw_fontset_getwidth(drw, segment);
+		drw_setscheme(drw, scheme[schemeid]);
+		drw_text(drw, x, 0, segmentwidth, bh, 0, segment, 0);
+		x += segmentwidth;
+	}
+}
+
 void
 drawbar(Monitor *m)
 {
@@ -766,9 +854,8 @@ drawbar(Monitor *m)
 		return;
 
 	/* draw status first so it can be overdrawn by tags later */
-	drw_setscheme(drw, scheme[SchemeNorm]);
-	tw = TEXTW(stext);
-	drw_text(drw, m->ww - tw, 0, tw, bh, lrpad / 2, stext, 0);
+	tw = statuswidth(stext);
+	drawstatusbar(m, tw);
 
 	for (c = m->clients; c; c = c->next) {
 		occ |= c->tags;
