@@ -172,6 +172,7 @@ static void enternotify(XEvent *e);
 static void expose(XEvent *e);
 static void focus(Client *c);
 static void focusin(XEvent *e);
+static void focusmaster(const Arg *arg);
 static void focusmon(const Arg *arg);
 static void focusstack(const Arg *arg);
 static Atom getatomprop(Client *c, Atom prop);
@@ -288,6 +289,7 @@ struct Pertag {
 	unsigned int sellts[LENGTH(tags) + 1];
 	const Layout *ltidxs[LENGTH(tags) + 1][2];
 	int showbars[LENGTH(tags) + 1];
+	Client *marked[LENGTH(tags) + 1];
 };
 
 /* compile-time check if all tags fit into an unsigned int bit array. */
@@ -708,8 +710,12 @@ destroynotify(XEvent *e)
 void
 detach(Client *c)
 {
+	unsigned int i;
 	Client **tc;
 
+	for (i = 0; i <= LENGTH(tags); i++)
+		if (c->mon->pertag->marked[i] == c)
+			c->mon->pertag->marked[i] = NULL;
 	for (tc = &c->mon->clients; *tc && *tc != c; tc = &(*tc)->next);
 	*tc = c->next;
 }
@@ -870,6 +876,35 @@ focusin(XEvent *e)
 
 	if (selmon->sel && ev->window != selmon->sel->win)
 		setfocus(selmon->sel);
+}
+
+void
+focusmaster(const Arg *arg)
+{
+	unsigned int i;
+	Client *master, *next;
+	Client **marked;
+
+	if (selmon->nmaster == 0 || !selmon->sel
+	|| (selmon->sel->isfullscreen && lockfullscreen))
+		return;
+	master = nexttiled(selmon->clients);
+	if (!master)
+		return;
+	for (i = 1; i < (unsigned int)selmon->nmaster; i++) {
+		if (!(next = nexttiled(master->next)))
+			break;
+		master = next;
+	}
+
+	marked = &selmon->pertag->marked[selmon->pertag->curtag];
+	if (selmon->sel == master) {
+		if (*marked && ISVISIBLE(*marked))
+			focus(*marked);
+	} else {
+		*marked = selmon->sel;
+		focus(master);
+	}
 }
 
 void
@@ -1276,6 +1311,7 @@ nexttiled(Client *c)
 void
 pop(Client *c)
 {
+	c->mon->pertag->marked[c->mon->pertag->curtag] = nexttiled(c->mon->clients);
 	detach(c);
 	attach(c);
 	focus(c);
