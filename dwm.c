@@ -212,6 +212,8 @@ static void setmfact(const Arg *arg);
 static void setup(void);
 static void seturgent(Client *c, int urg);
 static void showhide(Client *c);
+static void sighup(int unused);
+static void sigterm(int unused);
 static void spawn(const Arg *arg);
 static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
@@ -268,7 +270,8 @@ static void (*handler[LASTEvent]) (XEvent *) = {
 	[UnmapNotify] = unmapnotify
 };
 static Atom wmatom[WMLast], netatom[NetLast];
-static int running = 1;
+static volatile sig_atomic_t restart = 0;
+static volatile sig_atomic_t running = 1;
 static Cur *cursor[CurLast];
 static Clr **scheme;
 static Display *dpy;
@@ -1358,6 +1361,7 @@ propertynotify(XEvent *e)
 void
 quit(const Arg *arg)
 {
+	restart = arg->i != 0;
 	running = 0;
 }
 
@@ -1663,6 +1667,11 @@ setup(void)
 	sa.sa_flags = SA_NOCLDSTOP | SA_NOCLDWAIT | SA_RESTART;
 	sa.sa_handler = SIG_IGN;
 	sigaction(SIGCHLD, &sa, NULL);
+	sa.sa_flags = 0;
+	sa.sa_handler = sighup;
+	sigaction(SIGHUP, &sa, NULL);
+	sa.sa_handler = sigterm;
+	sigaction(SIGTERM, &sa, NULL);
 
 	/* clean up any zombies (inherited from .xinitrc etc) immediately */
 	while (waitpid(-1, NULL, WNOHANG) > 0);
@@ -1757,6 +1766,20 @@ showhide(Client *c)
 		showhide(c->snext);
 		XMoveWindow(dpy, c->win, WIDTH(c) * -2, c->y);
 	}
+}
+
+void
+sighup(int unused)
+{
+	restart = 1;
+	running = 0;
+}
+
+void
+sigterm(int unused)
+{
+	restart = 0;
+	running = 0;
 }
 
 void
@@ -2344,7 +2367,15 @@ main(int argc, char *argv[])
 		die("pledge");
 #endif /* __OpenBSD__ */
 	scan();
-	run();
+	for (;;) {
+		run();
+		if (!restart)
+			break;
+		restart = 0;
+		execvp(argv[0], argv);
+		fprintf(stderr, "dwm: execvp %s failed: %s\n", argv[0], strerror(errno));
+		running = 1;
+	}
 	cleanup();
 	XCloseDisplay(dpy);
 	return EXIT_SUCCESS;
