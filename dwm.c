@@ -1162,7 +1162,10 @@ manage(Window w, XWindowAttributes *wa)
 	updatewmhints(c);
 	XSelectInput(dpy, w, EnterWindowMask|FocusChangeMask|PropertyChangeMask|StructureNotifyMask);
 	grabbuttons(c, 0);
-	if (!c->isfloating)
+	if (c->isfloating) {
+		c->x = c->mon->mx + (c->mon->mw - c->w - 2 * c->bw) / 2;
+		c->y = c->mon->my + (c->mon->mh - c->h - 2 * c->bw) / 2;
+	} else
 		c->isfloating = c->oldstate = trans != None || c->isfixed;
 	if (c->isfloating)
 		XRaiseWindow(dpy, c->win);
