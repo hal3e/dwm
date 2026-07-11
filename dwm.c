@@ -157,6 +157,7 @@ static void buttonpress(XEvent *e);
 static void checkotherwm(void);
 static void cleanup(void);
 static void cleanupmon(Monitor *mon);
+static void centeredmaster(Monitor *m);
 static void clientmessage(XEvent *e);
 static void configure(Client *c);
 static void configurenotify(XEvent *e);
@@ -2347,6 +2348,52 @@ zoom(const Arg *arg)
 	if (c == nexttiled(selmon->clients) && !(c = nexttiled(c->next)))
 		return;
 	pop(c);
+}
+
+void
+centeredmaster(Monitor *m)
+{
+	unsigned int i, n, h, mw, mx, my, oty, ety, tw;
+	Client *c;
+
+	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
+	if (n == 0)
+		return;
+
+	mw = m->ww;
+	mx = my = 0;
+	tw = mw;
+	if (n > (unsigned int)m->nmaster) {
+		mw = m->nmaster ? m->ww * m->mfact : 0;
+		tw = m->ww - mw;
+		if (n - m->nmaster > 1) {
+			mx = (m->ww - mw) / 2;
+			tw = (m->ww - mw) / 2;
+		}
+	}
+
+	for (i = oty = ety = 0, c = nexttiled(m->clients);
+	     c; c = nexttiled(c->next), i++) {
+		if (i < (unsigned int)m->nmaster) {
+			h = (m->wh - my) / (MIN(n, m->nmaster) - i);
+			resize(c, m->wx + mx, m->wy + my, mw - 2 * c->bw,
+			       h - 2 * c->bw, 0);
+			if (my + HEIGHT(c) < m->wh)
+				my += HEIGHT(c);
+		} else if ((i - m->nmaster) % 2) {
+			h = (m->wh - ety) / ((1 + n - i) / 2);
+			resize(c, m->wx, m->wy + ety, tw - 2 * c->bw,
+			       h - 2 * c->bw, 0);
+			if (ety + HEIGHT(c) < m->wh)
+				ety += HEIGHT(c);
+		} else {
+			h = (m->wh - oty) / ((1 + n - i) / 2);
+			resize(c, m->wx + mx + mw, m->wy + oty, tw - 2 * c->bw,
+			       h - 2 * c->bw, 0);
+			if (oty + HEIGHT(c) < m->wh)
+				oty += HEIGHT(c);
+		}
+	}
 }
 
 int
