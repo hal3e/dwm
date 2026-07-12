@@ -61,7 +61,8 @@
 
 /* enums */
 enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
-enum { SchemeNorm, SchemeSel, SchemeWarn, SchemeUrgent }; /* color schemes */
+enum { BarInactive, BarActive, BarStateLast };
+enum { TagVacant, TagOccupied, TagSelected, TagUrgent, TagStateLast };
 enum { NetSupported, NetWMName, NetWMState, NetWMCheck,
        NetWMFullscreen, NetActiveWindow, NetWMWindowType,
        NetWMWindowTypeDialog, NetClientList, NetLast }; /* EWMH atoms */
@@ -88,6 +89,33 @@ typedef struct {
 	char marker;
 	unsigned int scheme;
 } StatusStyle;
+
+typedef struct {
+	unsigned int layout;
+	unsigned int title[BarStateLast];
+	unsigned int floating[BarStateLast];
+	unsigned int empty;
+} BarStyle;
+
+typedef struct {
+	const char *icon;
+	unsigned int scheme;
+} TagAppearance;
+
+/* Each state stores its displayed icon and color scheme. */
+typedef struct {
+	TagAppearance state[TagStateLast];
+} TagStyle;
+
+/* Build a tag style from icon/scheme pairs ordered vacant, occupied,
+ * selected, and urgent. */
+#define TAG_STYLE(vacant_icon, vacant_scheme, occupied_icon, occupied_scheme, selected_icon, selected_scheme, urgent_icon, urgent_scheme) \
+	{ .state = { \
+		[TagVacant] = { .icon = vacant_icon, .scheme = vacant_scheme }, \
+		[TagOccupied] = { .icon = occupied_icon, .scheme = occupied_scheme }, \
+		[TagSelected] = { .icon = selected_icon, .scheme = selected_scheme }, \
+		[TagUrgent] = { .icon = urgent_icon, .scheme = urgent_scheme }, \
+	} }
 
 typedef struct Monitor Monitor;
 typedef struct Client Client;
@@ -228,6 +256,7 @@ static int statusnext(const char **cursor, char *text, size_t size, unsigned int
 static int statusstyle(char marker, unsigned int *schemeid);
 static int statuswidth(const char *text);
 static void tag(const Arg *arg);
+static int tagwidth(unsigned int tag);
 static void tagmon(const Arg *arg);
 static void tile(Monitor *m);
 static void togglebar(const Arg *arg);
@@ -487,7 +516,7 @@ buttonpress(XEvent *e)
 	if (ev->window == selmon->barwin) {
 		i = x = 0;
 		do
-			x += TEXTW(tags[i]);
+			x += tagwidth(i);
 		while (ev->x >= x && ++i < LENGTH(tags));
 		if (i < LENGTH(tags)) {
 			click = ClkTagBar;
@@ -850,10 +879,11 @@ drawstatusbar(Monitor *m, int width)
 void
 drawbar(Monitor *m)
 {
+	const TagAppearance *appearance;
 	int x, w, tw = 0;
 	int boxs = drw->fonts->h / 9;
 	int boxw = drw->fonts->h / 6 + 2;
-	unsigned int i, occ = 0, urg = 0;
+	unsigned int barstate, i, tagstate, occ = 0, urg = 0;
 	Client *c;
 
 	if (!m->showbar)
@@ -868,19 +898,25 @@ drawbar(Monitor *m)
 		if (c->isurgent)
 			urg |= c->tags;
 	}
+	barstate = m == selmon ? BarActive : BarInactive;
 	x = 0;
 	for (i = 0; i < LENGTH(tags); i++) {
-		w = TEXTW(tags[i]);
-		drw_setscheme(drw, scheme[m->tagset[m->seltags] & 1 << i ? SchemeSel : SchemeNorm]);
-		drw_text(drw, x, 0, w, bh, lrpad / 2, tags[i], urg & 1 << i);
-		if (occ & 1 << i)
-			drw_rect(drw, x + boxs, boxs, boxw, boxw,
-				m == selmon && selmon->sel && selmon->sel->tags & 1 << i,
-				urg & 1 << i);
+		if (m->tagset[m->seltags] & 1 << i)
+			tagstate = TagSelected;
+		else if (urg & 1 << i)
+			tagstate = TagUrgent;
+		else if (occ & 1 << i)
+			tagstate = TagOccupied;
+		else
+			tagstate = TagVacant;
+		appearance = &tags[i].state[tagstate];
+		w = tagwidth(i);
+		drw_setscheme(drw, scheme[appearance->scheme]);
+		drw_text(drw, x, 0, w, bh, lrpad / 2, appearance->icon, 0);
 		x += w;
 	}
 	w = TEXTW(m->ltsymbol);
-	drw_setscheme(drw, scheme[SchemeNorm]);
+	drw_setscheme(drw, scheme[barstyle.layout]);
 	x = drw_text(drw, x, 0, w, bh, lrpad / 2, m->ltsymbol, 0);
 
 	if ((w = m->ww - tw - x) > bh) {
@@ -888,12 +924,14 @@ drawbar(Monitor *m)
 			int mid = (m->ww - (int)TEXTW(m->sel->name)) / 2 - x;
 
 			mid = MAX(mid, lrpad / 2);
-			drw_setscheme(drw, scheme[m == selmon ? SchemeSel : SchemeNorm]);
+			drw_setscheme(drw, scheme[barstyle.title[barstate]]);
 			drw_text(drw, x, 0, w, bh, mid, m->sel->name, 0);
-			if (m->sel->isfloating)
-				drw_rect(drw, x + boxs, boxs, boxw, boxw, m->sel->isfixed, 0);
+			if (m->sel->isfloating) {
+				drw_setscheme(drw, scheme[barstyle.floating[barstate]]);
+				drw_rect(drw, x + boxs, (bh - boxw) / 2, boxw, boxw, 1, 0);
+			}
 		} else {
-			drw_setscheme(drw, scheme[SchemeNorm]);
+			drw_setscheme(drw, scheme[barstyle.empty]);
 			drw_rect(drw, x, 0, w, bh, 1, 1);
 		}
 	}
@@ -1928,6 +1966,17 @@ tag(const Arg *arg)
 		if ((arg->ui & TAGMASK) != selmon->tagset[selmon->seltags])
 			view(arg);
 	}
+}
+
+int
+tagwidth(unsigned int tag)
+{
+	unsigned int state;
+	int width = 0;
+
+	for (state = 0; state < TagStateLast; state++)
+		width = MAX(width, TEXTW(tags[tag].state[state].icon));
+	return width;
 }
 
 void

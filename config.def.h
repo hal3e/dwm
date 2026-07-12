@@ -19,6 +19,7 @@ static const char col_black[]       = "#000000";
 static const char col_red[]         = "#ff0000";
 static const char col_yellow[]      = "#ffff00";
 static const char col_white[]       = "#ffffff";
+enum { SchemeNorm, SchemeSel, SchemeWarn, SchemeUrgent };
 static const unsigned int baralpha    = 0xd0;
 static const unsigned int borderalpha = OPAQUE;
 static const char *colors[][3]      = {
@@ -43,7 +44,35 @@ static const StatusStyle statusstyles[] = {
 };
 
 /* tagging */
-static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
+/* TAG_STYLE arguments are icon/scheme pairs in this order:
+ * vacant: unselected tag with no clients
+ * occupied: unselected tag with one or more clients
+ * selected: tag currently visible; takes precedence over urgent
+ * urgent: unselected tag with an urgent client; takes precedence over occupied
+ */
+static const TagStyle tags[] = {
+	TAG_STYLE("1", SchemeNorm, "1", SchemeNorm, "1", SchemeSel, "1", SchemeUrgent),
+	TAG_STYLE("2", SchemeNorm, "2", SchemeNorm, "2", SchemeSel, "2", SchemeUrgent),
+	TAG_STYLE("3", SchemeNorm, "3", SchemeNorm, "3", SchemeSel, "3", SchemeUrgent),
+	TAG_STYLE("4", SchemeNorm, "4", SchemeNorm, "4", SchemeSel, "4", SchemeUrgent),
+	TAG_STYLE("5", SchemeNorm, "5", SchemeNorm, "5", SchemeSel, "5", SchemeUrgent),
+	TAG_STYLE("6", SchemeNorm, "6", SchemeNorm, "6", SchemeSel, "6", SchemeUrgent),
+	TAG_STYLE("7", SchemeNorm, "7", SchemeNorm, "7", SchemeSel, "7", SchemeUrgent),
+	TAG_STYLE("8", SchemeNorm, "8", SchemeNorm, "8", SchemeSel, "8", SchemeUrgent),
+	TAG_STYLE("9", SchemeNorm, "9", SchemeNorm, "9", SchemeSel, "9", SchemeUrgent),
+};
+static const BarStyle barstyle = {
+	.layout = SchemeNorm,
+	.title = {
+		[BarInactive] = SchemeNorm,
+		[BarActive] = SchemeSel,
+	},
+	.floating = {
+		[BarInactive] = SchemeNorm,
+		[BarActive] = SchemeSel,
+	},
+	.empty = SchemeNorm,
+};
 
 static const Rule rules[] = {
 	/* xprop(1):
