@@ -2443,24 +2443,16 @@ zoom(const Arg *arg)
 void
 centeredmaster(Monitor *m)
 {
-	unsigned int i, n, h, mw, mx, my, oty, ety, tw;
+	unsigned int i, n, h, mw, mx, my, oty, ety;
 	Client *c;
 
 	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
 	if (n == 0)
 		return;
 
-	mw = m->ww;
-	mx = my = 0;
-	tw = mw;
-	if (n > (unsigned int)m->nmaster) {
-		mw = m->nmaster ? m->ww * m->mfact : 0;
-		tw = m->ww - mw;
-		if (n - m->nmaster > 1) {
-			mx = (m->ww - mw) / 2;
-			tw = (m->ww - mw) / 2;
-		}
-	}
+	mw = m->nmaster ? m->ww * m->mfact : 0;
+	mx = (m->ww - mw) / 2;
+	my = 0;
 
 	for (i = oty = ety = 0, c = nexttiled(m->clients);
 	     c; c = nexttiled(c->next), i++) {
@@ -2472,13 +2464,13 @@ centeredmaster(Monitor *m)
 				my += HEIGHT(c);
 		} else if ((i - m->nmaster) % 2) {
 			h = (m->wh - ety) / ((1 + n - i) / 2);
-			resize(c, m->wx, m->wy + ety, tw - 2 * c->bw,
+			resize(c, m->wx, m->wy + ety, mx - 2 * c->bw,
 			       h - 2 * c->bw, 0);
 			if (ety + HEIGHT(c) < m->wh)
 				ety += HEIGHT(c);
 		} else {
 			h = (m->wh - oty) / ((1 + n - i) / 2);
-			resize(c, m->wx + mx + mw, m->wy + oty, tw - 2 * c->bw,
+			resize(c, m->wx + mx + mw, m->wy + oty, mx - 2 * c->bw,
 			       h - 2 * c->bw, 0);
 			if (oty + HEIGHT(c) < m->wh)
 				oty += HEIGHT(c);
