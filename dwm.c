@@ -122,6 +122,7 @@ typedef struct {
 struct Monitor {
 	char ltsymbol[16];
 	float mfact;
+	float wtilefact;
 	int nmaster;
 	int num;
 	int by;               /* bar geometry */
@@ -216,6 +217,7 @@ static void setfocus(Client *c);
 static void setfullscreen(Client *c, int fullscreen);
 static void setlayout(const Arg *arg);
 static void setmfact(const Arg *arg);
+static void setwtilefact(const Arg *arg);
 static void setup(void);
 static void seturgent(Client *c, int urg);
 static void showhide(Client *c);
@@ -248,6 +250,7 @@ static void updatewmhints(Client *c);
 static void view(const Arg *arg);
 static Client *wintoclient(Window w);
 static Monitor *wintomon(Window w);
+static void wtile(Monitor *m);
 static int xerror(Display *dpy, XErrorEvent *ee);
 static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static int xerrorstart(Display *dpy, XErrorEvent *ee);
@@ -299,6 +302,7 @@ struct Pertag {
 	unsigned int curtag, prevtag;
 	int nmasters[LENGTH(tags) + 1];
 	float mfacts[LENGTH(tags) + 1];
+	float wtilefacts[LENGTH(tags) + 1];
 	unsigned int sellts[LENGTH(tags) + 1];
 	const Layout *ltidxs[LENGTH(tags) + 1][2];
 	int showbars[LENGTH(tags) + 1];
@@ -691,6 +695,7 @@ createmon(void)
 	m = ecalloc(1, sizeof(Monitor));
 	m->tagset[0] = m->tagset[1] = 1;
 	m->mfact = mfact;
+	m->wtilefact = wtilefact;
 	m->nmaster = nmaster;
 	m->showbar = showbar;
 	m->topbar = topbar;
@@ -702,6 +707,7 @@ createmon(void)
 	for (i = 0; i <= LENGTH(tags); i++) {
 		m->pertag->nmasters[i] = m->nmaster;
 		m->pertag->mfacts[i] = m->mfact;
+		m->pertag->wtilefacts[i] = m->wtilefact;
 		m->pertag->sellts[i] = m->sellt;
 		m->pertag->ltidxs[i][m->sellt] = m->lt[m->sellt];
 		m->pertag->ltidxs[i][m->sellt ^ 1] = m->lt[m->sellt ^ 1];
@@ -1745,6 +1751,24 @@ setmfact(const Arg *arg)
 }
 
 void
+setwtilefact(const Arg *arg)
+{
+	float f;
+
+	if (!arg || arg->i == 0 || selmon->lt[selmon->sellt]->arrange != wtile)
+		return;
+	f = selmon->wtilefact + arg->i * wtilefactstep;
+	if (f < wtilefactmin)
+		f = wtilefactmin;
+	else if (f > wtilefactmax)
+		f = wtilefactmax;
+	if (f == selmon->wtilefact)
+		return;
+	selmon->wtilefact = selmon->pertag->wtilefacts[selmon->pertag->curtag] = f;
+	arrange(selmon);
+}
+
+void
 setup(void)
 {
 	int i;
@@ -1944,6 +1968,44 @@ tile(Monitor *m)
 }
 
 void
+wtile(Monitor *m)
+{
+	unsigned int i, n, stackn, w, h, mw, mx, ty;
+	Client *c;
+
+	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
+	if (n == 0)
+		return;
+
+	if (n > (unsigned int)m->nmaster)
+		mw = m->nmaster ? m->ww * m->mfact : 0;
+	else
+		mw = m->ww;
+	stackn = n > (unsigned int)m->nmaster ? n - m->nmaster : 0;
+	for (i = mx = ty = 0, c = nexttiled(m->clients);
+	     c; c = nexttiled(c->next), i++) {
+		if (i < (unsigned int)m->nmaster) {
+			w = (mw - mx) / (MIN(n, m->nmaster) - i);
+			resize(c, m->wx + mx, m->wy,
+			       w - 2 * c->bw + (n > 1 ? gappx : 0),
+			       m->wh - 2 * c->bw, 0);
+			mx += WIDTH(c);
+		} else {
+			if (i == (unsigned int)m->nmaster)
+				h = stackn > 1
+					? m->wh * m->wtilefact / (m->wtilefact + stackn - 1)
+					: m->wh;
+			else
+				h = (m->wh - ty) / (n - i);
+			resize(c, m->wx + mw, m->wy + ty,
+			       m->ww - mw - 2 * c->bw, h - 2 * c->bw, 0);
+			if (ty + HEIGHT(c) < m->wh)
+				ty += HEIGHT(c);
+		}
+	}
+}
+
+void
 togglebar(const Arg *arg)
 {
 	selmon->showbar = selmon->pertag->showbars[selmon->pertag->curtag] = !selmon->showbar;
@@ -2000,6 +2062,7 @@ toggleview(const Arg *arg)
 		}
 		selmon->nmaster = selmon->pertag->nmasters[selmon->pertag->curtag];
 		selmon->mfact = selmon->pertag->mfacts[selmon->pertag->curtag];
+		selmon->wtilefact = selmon->pertag->wtilefacts[selmon->pertag->curtag];
 		selmon->sellt = selmon->pertag->sellts[selmon->pertag->curtag];
 		selmon->lt[selmon->sellt] = selmon->pertag->ltidxs[selmon->pertag->curtag][selmon->sellt];
 		selmon->lt[selmon->sellt ^ 1] = selmon->pertag->ltidxs[selmon->pertag->curtag][selmon->sellt ^ 1];
@@ -2325,6 +2388,7 @@ view(const Arg *arg)
 	}
 	selmon->nmaster = selmon->pertag->nmasters[selmon->pertag->curtag];
 	selmon->mfact = selmon->pertag->mfacts[selmon->pertag->curtag];
+	selmon->wtilefact = selmon->pertag->wtilefacts[selmon->pertag->curtag];
 	selmon->sellt = selmon->pertag->sellts[selmon->pertag->curtag];
 	selmon->lt[selmon->sellt] = selmon->pertag->ltidxs[selmon->pertag->curtag][selmon->sellt];
 	selmon->lt[selmon->sellt ^ 1] = selmon->pertag->ltidxs[selmon->pertag->curtag][selmon->sellt ^ 1];
